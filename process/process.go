@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"sort"
 
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v4/process"
 )
+
+type ProcessCollector struct{}
 
 type ProcessInfo struct {
 	PID        int32
@@ -13,12 +15,11 @@ type ProcessInfo struct {
 	CpuPercent float64
 }
 
-func getProcessInfo() []ProcessInfo {
+func getProcessInfo() ([]ProcessInfo, error) {
 
 	processes, err := process.Processes()
 	if err != nil {
-		fmt.Println(" Error fetching processes: ", err)
-		return nil
+		return nil, fmt.Errorf("error fetching processes: %w", err)
 	}
 
 	var processInfos []ProcessInfo
@@ -31,7 +32,7 @@ func getProcessInfo() []ProcessInfo {
 
 		name, err := p.Name()
 		if err != nil {
-			name = "UnKnown"
+			continue
 		}
 
 		processInfos = append(processInfos, ProcessInfo{
@@ -40,26 +41,34 @@ func getProcessInfo() []ProcessInfo {
 			CpuPercent: cpuPercent,
 		})
 	}
-	return processInfos
+	return processInfos, nil
 }
 
-func Update() []ProcessInfo {
-	pInfo := getProcessInfo()
-	top := getTopProcess(pInfo)
-	return top
+func (p *ProcessCollector) Update() (interface{}, error) {
+	pInfo, err := getProcessInfo()
+	if err != nil {
+		return nil, err
+	}
+	top := getTopProcesses(pInfo)
+
+	return top, nil
 }
 
-func getTopProcess(pInfo []ProcessInfo) []ProcessInfo {
+// getTopProcesses 함수: CPU 사용률이 높은 상위 5개 프로세스를 정렬 및 출력
+func getTopProcesses(pInfo []ProcessInfo) []ProcessInfo {
 	sort.Slice(pInfo, func(i, j int) bool {
 		return pInfo[i].CpuPercent > pInfo[j].CpuPercent
 	})
 
-	for i, p := range pInfo {
-		if i >= 5 {
-			break
-		}
-		fmt.Printf("%-8d %-20s %.2f%%\n", p.PID, p.Name, p.CpuPercent)
-	}
+	topN := min(len(pInfo), 5)
 
-	return pInfo
+	return pInfo[:topN]
+}
+
+// min 함수: 두 숫자 중 작은 값을 반환
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }

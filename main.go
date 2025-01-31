@@ -1,9 +1,7 @@
 package main
 
-import (
-	"agent/process"
-)
+import "agent/sched"
 
 func main() {
-	process.Update()
+	sched.Run()
 }
