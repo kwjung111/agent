@@ -1,7 +1,7 @@
 package main
 
-import "agent/sched"
+import "agent/scheduler"
 
 func main() {
-	sched.Run()
+	scheduler.Run()
 }

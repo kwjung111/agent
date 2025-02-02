@@ -1,6 +1,7 @@
-package process
+package collector
 
 import (
+	"context"
 	"fmt"
 	"sort"
 
@@ -13,6 +14,10 @@ type ProcessInfo struct {
 	PID        int32
 	Name       string
 	CpuPercent float64
+}
+
+func init() {
+	Register(&ProcessCollector{})
 }
 
 func getProcessInfo() ([]ProcessInfo, error) {
@@ -44,14 +49,24 @@ func getProcessInfo() ([]ProcessInfo, error) {
 	return processInfos, nil
 }
 
-func (p *ProcessCollector) Update() (interface{}, error) {
-	pInfo, err := getProcessInfo()
-	if err != nil {
-		return nil, err
-	}
-	top := getTopProcesses(pInfo)
+func (p *ProcessCollector) GetName() string {
+	const metricName = "process"
+	return metricName
+}
 
-	return top, nil
+func (p *ProcessCollector) Update(ctx context.Context) (interface{}, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		pInfo, err := getProcessInfo()
+		if err != nil {
+			return nil, err
+		}
+		top := getTopProcesses(pInfo)
+
+		return top, nil
+	}
 }
 
 // getTopProcesses 함수: CPU 사용률이 높은 상위 5개 프로세스를 정렬 및 출력

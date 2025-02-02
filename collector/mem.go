@@ -1,6 +1,7 @@
-package mem
+package collector
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/shirou/gopsutil/v4/mem"
@@ -12,6 +13,10 @@ type MemoryInfo struct {
 	Total     uint64
 	Available uint64
 	Used      uint64
+}
+
+func init() {
+	Register(&MemoryCollector{})
 }
 
 func getMem() (MemoryInfo, error) {
@@ -41,10 +46,20 @@ func parse(virtMem *mem.VirtualMemoryStat) (MemoryInfo, error) {
 	return memoryInfo, nil
 }
 
-func (m *MemoryCollector) Update() (interface{}, error) {
-	mem, err := getMem()
-	if err != nil {
-		return MemoryInfo{}, nil
+func (m *MemoryCollector) GetName() string {
+	const metricName = "memory"
+	return metricName
+}
+
+func (m *MemoryCollector) Update(ctx context.Context) (interface{}, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	default:
+		mem, err := getMem()
+		if err != nil {
+			return MemoryInfo{}, nil
+		}
+		return mem, nil
 	}
-	return mem, nil
 }
