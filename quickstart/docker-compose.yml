@@ -1,0 +1,49 @@
+version: '3'
+services:
+  otel-collector:
+    image: otel/opentelemetry-collector:latest
+    command: ["--config=/etc/otel-collector-config.yaml"]
+    volumes:
+      - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+    ports:
+      - "4317:4317"    # OTLP gRPC 
+      - "4318:4318"    # OTLP http 
+    networks:
+      - otel-network
+
+  # Prometheus for metrics storage
+  prometheus:
+    image: prom/prometheus:latest
+    command:
+      - '--web.enable-remote-write-receiver'          #enable remote write
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.retention.time=30d'
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/data:/data
+    ports:
+      - "9090:9090"    # Prometheus UI
+    networks:
+      - otel-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    volumes:
+      - grafana_data:/var/lib/grafana
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin1111!#!
+    networks:
+      - otel-network
+    depends_on:
+      - prometheus
+
+volumes:
+  grafana_data:
+    driver: local
+
+networks:
+  otel-network:
+    driver: bridge
