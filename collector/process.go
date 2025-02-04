@@ -3,9 +3,13 @@ package collector
 import (
 	"context"
 	"fmt"
+	"log"
 	"sort"
 
 	"github.com/shirou/gopsutil/v4/process"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/metric"
 )
 
 type ProcessCollector struct{}
@@ -47,6 +51,31 @@ func getProcessInfo() ([]ProcessInfo, error) {
 		})
 	}
 	return processInfos, nil
+}
+
+func (p *ProcessCollector) GetMeterConfig() MeterConfig {
+
+	metricName := "dd"
+
+	meter := otel.Meter("test-meter")
+
+	observable, err := meter.Int64ObservableCounter(
+		metricName,
+		metric.WithDescription("this is a test Counter"),
+	)
+	if err != nil {
+		log.Fatalf("failed to create meter")
+	}
+
+	callback := func(ctx context.Context, observer metric.Observer) error {
+		inc := int64(1)
+		observer.ObserveInt64(observable, inc, metric.WithAttributes(attribute.String("endpoint", "/example")))
+		return nil
+	}
+
+	return MeterConfig{
+		"process", meter, observable, callback,
+	}
 }
 
 func (p *ProcessCollector) GetName() string {

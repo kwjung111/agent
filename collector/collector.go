@@ -3,17 +3,31 @@ package collector
 import (
 	"context"
 	"fmt"
+	"log"
 	"sync"
 )
 
 type Collector interface {
+	GetMeterConfig() MeterConfig
 	GetName() string
 	Update(ctx context.Context) (interface{}, error)
 }
 
 var (
-	collectors map[string]Collector = make(map[string]Collector)
+	collectors = make(map[string]Collector)
 )
+
+func InitCollectors(ctx context.Context) error {
+	for _, collector := range collectors {
+		cfg := collector.GetMeterConfig()
+		//init
+		_, err := cfg.meter.RegisterCallback(cfg.callback, cfg.observable)
+		if err != nil {
+			log.Fatalf("error!")
+		}
+	}
+	return nil
+}
 
 func Register(c Collector) {
 	if c.GetName() == "" {
@@ -25,6 +39,10 @@ func Register(c Collector) {
 	}
 
 	collectors[c.GetName()] = c
+}
+
+func GetCollectors() map[string]Collector {
+	return collectors
 }
 
 func UpdateAll() {
