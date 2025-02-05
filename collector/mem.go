@@ -7,7 +7,6 @@ import (
 
 	"github.com/shirou/gopsutil/v4/mem"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -50,29 +49,38 @@ func parse(virtMem *mem.VirtualMemoryStat) (MemoryInfo, error) {
 	return memoryInfo, nil
 }
 
-func (m *MemoryCollector) GetMeterConfig() MeterConfig {
+func (m *MemoryCollector) InitMeter() error {
 
-	metricName := "dd22"
+	meter := otel.Meter("os")
 
-	meter := otel.Meter("test-meter2")
-
-	observable, err := meter.Int64ObservableCounter(
-		metricName,
+	gauge1, err := meter.Int64ObservableGauge(
+		"gauge1",
 		metric.WithDescription("this is a test Counter"),
 	)
 	if err != nil {
 		log.Fatalf("failed to create meter")
 	}
 
+	gauge2, err := meter.Float64ObservableGauge(
+		"gauge2",
+		metric.WithDescription("this is guage2"),
+	)
+	if err != nil {
+		log.Fatalf("failed to create meter")
+	}
+
 	callback := func(ctx context.Context, observer metric.Observer) error {
-		inc := int64(2)
-		observer.ObserveInt64(observable, inc, metric.WithAttributes(attribute.String("endpoint", "/test2")))
+		observer.ObserveInt64(gauge1, 11, metric.WithAttributes(AttrUnitByte()))
+		observer.ObserveFloat64(gauge2, 123.45, metric.WithAttributes(AttrUnitPercent()))
 		return nil
 	}
 
-	return MeterConfig{
-		"memory", meter, observable, callback,
+	_, err = meter.RegisterCallback(callback, gauge1, gauge2)
+	if err != nil {
+		log.Fatalf("error!")
 	}
+
+	return nil
 }
 
 func (m *MemoryCollector) GetName() string {

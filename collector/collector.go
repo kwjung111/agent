@@ -3,12 +3,11 @@ package collector
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 )
 
 type Collector interface {
-	GetMeterConfig() MeterConfig
+	InitMeter() error
 	GetName() string
 	Update(ctx context.Context) (interface{}, error)
 }
@@ -19,11 +18,9 @@ var (
 
 func InitCollectors(ctx context.Context) error {
 	for _, collector := range collectors {
-		cfg := collector.GetMeterConfig()
-		//init
-		_, err := cfg.meter.RegisterCallback(cfg.callback, cfg.observable)
+		err := collector.InitMeter()
 		if err != nil {
-			log.Fatalf("error!")
+			return err
 		}
 	}
 	return nil

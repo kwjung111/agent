@@ -8,7 +8,6 @@ import (
 
 	"github.com/shirou/gopsutil/v4/process"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
@@ -53,23 +52,27 @@ func getProcessInfo() ([]ProcessInfo, error) {
 	return processInfos, nil
 }
 
+func (p *ProcessCollector) InitMeter() error {
+	return nil
+}
+
 func (p *ProcessCollector) GetMeterConfig() MeterConfig {
 
-	metricName := "dd"
+	metricName := "process"
 
-	meter := otel.Meter("test-meter")
+	//TODO CHECK meter name
+	meter := otel.Meter("os")
 
-	observable, err := meter.Int64ObservableCounter(
+	observable, err := meter.Float64ObservableGauge(
 		metricName,
-		metric.WithDescription("this is a test Counter"),
+		metric.WithDescription("this is a test"),
 	)
 	if err != nil {
 		log.Fatalf("failed to create meter")
 	}
 
 	callback := func(ctx context.Context, observer metric.Observer) error {
-		inc := int64(1)
-		observer.ObserveInt64(observable, inc, metric.WithAttributes(attribute.String("endpoint", "/example")))
+		observer.ObserveFloat64(observable, 123.45, metric.WithAttributes(AttrUnitPercent()))
 		return nil
 	}
 

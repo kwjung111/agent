@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"time"
 
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
@@ -21,6 +22,10 @@ var (
 )
 
 func InitMeterProvider(ctx context.Context) (*sdkmetric.MeterProvider, error) {
+
+	//TODO make Config
+	intervalSec := time.Duration(2)
+
 	once.Do(func() {
 
 		// Create a grpc Exporer
@@ -31,6 +36,7 @@ func InitMeterProvider(ctx context.Context) (*sdkmetric.MeterProvider, error) {
 			return
 		}
 
+		//TODO CONFIG
 		res, err := resource.New(ctx,
 			resource.WithAttributes(
 				semconv.ServiceNameKey.String("test"),
@@ -44,7 +50,7 @@ func InitMeterProvider(ctx context.Context) (*sdkmetric.MeterProvider, error) {
 		// Create a trace provider with the exporter and a resource
 		meterProvider = sdkmetric.NewMeterProvider(
 			sdkmetric.WithResource(res),
-			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter)),
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(intervalSec*time.Second))),
 		)
 
 		// Register the trace provider with the global trace provider
