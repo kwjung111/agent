@@ -2,14 +2,11 @@ package collector
 
 import (
 	"context"
-	"fmt"
-	"sync"
 )
 
 type Collector interface {
 	InitMeter() error
 	GetName() string
-	Update(ctx context.Context) (interface{}, error)
 }
 
 var (
@@ -40,35 +37,4 @@ func Register(c Collector) {
 
 func GetCollectors() map[string]Collector {
 	return collectors
-}
-
-func UpdateAll() {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	var wg sync.WaitGroup
-	var clen = len(collectors)
-
-	errChan := make(chan error, clen)
-	wg.Add(clen)
-
-	for _, collector := range collectors {
-		go func(c Collector) {
-			defer wg.Done()
-			res, err := c.Update(ctx)
-			if err != nil {
-				errChan <- err
-				return
-			}
-			fmt.Println(res) // FOR DEBUGGING
-		}(collector)
-	}
-
-	wg.Wait()
-	close(errChan)
-
-	for err := range errChan {
-		fmt.Printf("Error occurred: %v\n", err)
-	}
-
 }

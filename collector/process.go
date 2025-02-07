@@ -8,10 +8,12 @@ import (
 
 	"github.com/shirou/gopsutil/v4/process"
 	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/metric"
 )
 
-type ProcessCollector struct{}
+type ProcessCollector struct {
+}
 
 type ProcessInfo struct {
 	PID        int32
@@ -53,32 +55,46 @@ func getProcessInfo() ([]ProcessInfo, error) {
 }
 
 func (p *ProcessCollector) InitMeter() error {
-	return nil
-}
-
-func (p *ProcessCollector) GetMeterConfig() MeterConfig {
-
-	metricName := "process"
-
-	//TODO CHECK meter name
 	meter := otel.Meter("os")
 
 	observable, err := meter.Float64ObservableGauge(
-		metricName,
-		metric.WithDescription("this is a test"),
+		"process",
+		metric.WithDescription("this is a test Counter"),
 	)
 	if err != nil {
 		log.Fatalf("failed to create meter")
 	}
 
 	callback := func(ctx context.Context, observer metric.Observer) error {
-		observer.ObserveFloat64(observable, 123.45, metric.WithAttributes(AttrUnitPercent()))
+		data, err := p.Update(ctx)
+		if err != nil {
+			return err
+		}
+		processInfos, ok := data.([]ProcessInfo)
+		if !ok {
+			return fmt.Errorf("invalid process data")
+		}
+
+		for _, proc := range processInfos {
+			observer.ObserveFloat64(
+				observable,
+				proc.CpuPercent,
+				metric.WithAttributes(
+					attribute.String("pid", fmt.Sprintf("%d", proc.PID)),
+					attribute.String("name", proc.Name),
+					AttrUnitPercent(),
+				),
+			)
+		}
 		return nil
 	}
 
-	return MeterConfig{
-		"process", meter, observable, callback,
+	_, err = meter.RegisterCallback(callback, observable)
+	if err != nil {
+		log.Fatalf("error!")
 	}
+
+	return nil
 }
 
 func (p *ProcessCollector) GetName() string {
