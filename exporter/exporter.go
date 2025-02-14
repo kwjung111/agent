@@ -1,6 +1,7 @@
 package exporter
 
 import (
+	config "agent/common"
 	"context"
 	"fmt"
 	"sync"
@@ -18,13 +19,12 @@ var (
 	meterProvider *sdkmetric.MeterProvider
 	once          sync.Once
 	initErr       error
-	lock          = &sync.Mutex{}
 )
 
 func InitMeterProvider(ctx context.Context) (*sdkmetric.MeterProvider, error) {
 
-	//TODO make Config
-	intervalSec := time.Duration(2)
+	config := config.GetConfig()
+	interval := config.GetScrapeInterval()
 
 	once.Do(func() {
 
@@ -50,7 +50,7 @@ func InitMeterProvider(ctx context.Context) (*sdkmetric.MeterProvider, error) {
 		// Create a trace provider with the exporter and a resource
 		meterProvider = sdkmetric.NewMeterProvider(
 			sdkmetric.WithResource(res),
-			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(intervalSec*time.Second))),
+			sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter, sdkmetric.WithInterval(interval*time.Second))),
 		)
 
 		// Register the trace provider with the global trace provider
